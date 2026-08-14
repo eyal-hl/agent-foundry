@@ -94,7 +94,9 @@ Reviewer and QA report findings. Code repair requires an explicit trusted `/fix`
 
 Fixer only acts on workflow findings explicitly allowed by its repository prompt, normally `[AI-REVIEW]`, `[AI-QA]`, and `[AI-SECURITY]`.
 
-Repairs are bounded. The default budget is two autonomous repair rounds, then `needs-human`.
+Each `/fix` authorizes one repair pass and then stops. There is no fixed lifetime round limit: the trusted human may dispatch another `/fix` whenever another repair pass is warranted. The Fixer must never self-dispatch or recursively continue repairing without a new trusted human command.
+
+If a finding cannot be safely repaired, the Fixer should report `needs-human` rather than guess.
 
 ## Trigger hygiene
 
@@ -110,6 +112,6 @@ Repairs are bounded. The default budget is two autonomous repair rounds, then `n
 
 1. Human reviews/reconciles the proposal after Disagreer feedback.
 2. Human approves implementation before `/build`.
-3. Human dispatches `/fix` when repair is desired.
+3. Human dispatches each `/fix` repair pass when desired.
 4. Human performs any environment/device validation agents cannot genuinely perform.
 5. Human merges the final PR.

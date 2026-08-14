@@ -2,17 +2,19 @@
 
 ## Goal
 
-Turn a product conversation into reviewed code without requiring the human owner to manually implement features.
+Turn a product conversation into reviewed code without requiring the human owner to manually implement features, while keeping architecture challenges, implementation, review, QA, repair, and release as separate roles.
 
 ```text
 Human + ChatGPT
   brainstorm / clarify behavior
           ↓
-ChatGPT creates/updates durable GitHub issue
+ChatGPT creates/updates durable GitHub proposal
           ↓
-Human reviews ticket
+Disagreer challenges plan / architecture
           ↓
-Human approves implementation
+Human + ChatGPT reconcile useful feedback
+          ↓
+Human approves ticket
           ↓
 Cursor Developer Cloud Agent
           ↓
@@ -22,6 +24,8 @@ Independent review + QA
           ↓
 repairs if required
           ↓
+Human validation where required
+          ↓
 Human reviews / merges
 ```
 
@@ -29,15 +33,37 @@ Human reviews / merges
 
 Chat is for exploration. Before implementation, important decisions must exist in `docs/product/*`, the GitHub issue, a linked spec under `docs/specs/`, or a recorded decision. An implementation agent must not require the original brainstorming conversation to understand approved behavior.
 
+Agent behavior is also source-controlled. `automation-prompts/*.md` contains the authoritative role instructions for this repository.
+
+Cursor itself should contain only small reusable bootstrap prompts. One Cursor automation per role can serve many repositories; each run loads the repository-specific role prompt from a trusted branch.
+
+## Trusted automation instructions
+
+Automation prompts are security-sensitive.
+
+- Issue-triggered roles load their role file from the repository default branch.
+- PR-triggered roles load their role file from the PR base branch.
+- Never use the PR head/source branch as the authority for Reviewer, QA, or Fixer instructions.
+
+This allows a PR to propose changing automation behavior without letting unmerged code weaken the gate reviewing that same PR.
+
 ## Ticket lifecycle
 
 ### Proposal
 
 A ticket should include, where relevant: problem/outcome, user-visible behavior, acceptance criteria, edge cases, explicit non-goals, constraints, and links to relevant product docs.
 
+### Disagreement pass
+
+The Disagreer runs before implementation. It looks for material architecture/product problems, hidden assumptions, unnecessary complexity, missing acceptance criteria, simpler alternatives, and risky coupling.
+
+Its feedback is advisory. It may return `DISAGREER PASS`; disagreement for disagreement's sake is undesirable.
+
+The owner and ChatGPT reconcile useful findings into the durable issue before approval.
+
 ### Human approval
 
-The owner reviews the durable ticket before implementation. The default dispatch command is an exact issue comment:
+The owner reviews the durable ticket after the disagreement pass. The default dispatch command is an exact issue comment:
 
 ```text
 /build
@@ -47,15 +73,21 @@ The owner reviews the durable ticket before implementation. The default dispatch
 
 ### Implementation
 
-Developer reads docs + issue/spec, implements the whole approved scope, validates it, and opens a PR. It never merges.
+Developer reads docs + issue/spec, implements the whole approved scope, validates it, and opens an autonomous PR. It never merges.
 
 ### Review and QA
 
-Independent agents verify the result from fresh context. Review is code/spec-oriented. QA is behavior-oriented and should exercise the running product when practical.
+Independent agents verify the result from fresh context. Review is code/spec/architecture-oriented. QA is behavior-oriented and should exercise the running product when practical.
+
+Reviewer and QA should run on draft PR creation, normal PR creation, and subsequent pushes so repair commits are re-checked automatically.
 
 ### Repair
 
-Repairs are bounded to two autonomous rounds. If the PR still cannot pass, stop and request human judgment.
+Repairs require an explicit trusted `/fix` dispatch. They are bounded to two autonomous rounds by default. If the PR still cannot pass, stop and request human judgment.
+
+### Human validation
+
+Acceptance criteria requiring hardware, production access, credentials, external systems, or other unavailable environments remain explicitly human-owned. Agents must not claim those passed.
 
 ### Human merge
 
@@ -65,8 +97,9 @@ The owner is the final release gate.
 
 Convenient conversational commands:
 
-- `ticket this` → create/update the GitHub issue from the current brainstorm.
+- `ticket this` → create/update the GitHub proposal from the current brainstorm.
 - `update #12 with ...` → edit the durable ticket.
+- `reconcile #12` → incorporate useful Disagreer feedback into the proposal.
 - `approve #12` → record approval and dispatch `/build`.
 - `fix PR #34` → dispatch a trusted repair after reviewing findings.
 - `review PR #34` → independently inspect the PR/diff/discussion before merge.

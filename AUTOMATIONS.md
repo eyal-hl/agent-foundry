@@ -10,7 +10,7 @@ This lets one Cursor automation serve many Agent Foundry repositories while each
 
 | Automation | Suggested model | Trigger | Writes code? |
 |---|---|---|---|
-| Disagreer | strong independent reasoning model from a different family | issue opened | No |
+| Disagreer | strong independent reasoning model from a different family | issue comment exactly `/challenge` | No |
 | Developer | Grok 4.6, high effort | issue comment exactly `/build` | Yes |
 | Independent Reviewer | Claude Sonnet 5 | draft opened + PR opened + PR pushed | No |
 | Product QA | Grok 4.6, medium/high | draft opened + PR opened + PR pushed | No |
@@ -53,7 +53,13 @@ When a new repository is created from Agent Foundry, customize its role files as
 
 ## Disagreement gate
 
-The Disagreer runs while the ticket is still a proposal, before `/build`.
+Cursor does not currently expose an issue-created trigger, so the Disagreer uses an explicit trusted issue comment:
+
+```text
+/challenge
+```
+
+When ChatGPT creates a proposal, it may immediately dispatch `/challenge` on behalf of the trusted owner. This keeps the architecture challenge before `/build` without requiring a separate automation per repository.
 
 Its purpose is constructive adversarial review of the **plan**, not implementation review. It should challenge material assumptions such as architecture, unnecessary complexity, missing constraints, unsafe coupling, hidden platform risks, poor acceptance criteria, and simpler alternatives.
 
@@ -62,7 +68,7 @@ It must not manufacture objections merely to disagree. `DISAGREER PASS` is a val
 Disagreer comments are advisory. A human/ChatGPT product pass reconciles useful findings into the issue before approval.
 
 ```text
-proposal issue → Disagreer → human/ChatGPT reconcile → /build
+proposal issue → /challenge → Disagreer → human/ChatGPT reconcile → /build
 ```
 
 ## Approval / dispatch
@@ -93,7 +99,7 @@ Repairs are bounded. The default budget is two autonomous repair rounds, then `n
 ## Trigger hygiene
 
 - Restrict issue/PR creation to collaborators where appropriate for public automation-driven repositories.
-- Prefer exact keyword filters for `/build` and `/fix` in Cursor as a first line of defense.
+- Prefer exact keyword filters for `/challenge`, `/build`, and `/fix` in Cursor as a first line of defense.
 - Keep the same checks again inside the repository-owned role prompt.
 - Reviewer/QA should scope themselves to autonomous PRs, normally an `agent/` head branch or `ai:autonomous` label.
 - Never treat arbitrary issue or PR prose as trusted instructions to edit code.

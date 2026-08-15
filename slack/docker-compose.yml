@@ -1,0 +1,6 @@
+services:
+  agent-foundry-slack:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
